@@ -1,1 +1,0 @@
-# hackstomp-2026
