@@ -1,13 +1,15 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import LogoIcon from '../components/LogoIcon'
 
 export default function AshaLoginPage() {
   const [tab, setTab]     = useState('login')
   const [form, setForm]   = useState({})
 
+  const navigate = useNavigate()
+
   const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
-  const handleSubmit = e => { e.preventDefault(); alert(tab === 'login' ? 'Login successful! (demo)' : 'Registration submitted! (demo)') }
+  const handleSubmit = e => { e.preventDefault(); navigate('/asha-dashboard') }
 
   return (
     <div className="auth-page">

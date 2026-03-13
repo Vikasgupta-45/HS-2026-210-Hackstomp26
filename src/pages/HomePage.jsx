@@ -78,7 +78,7 @@ export default function HomePage() {
             <Reveal delay="delay-3">
               <div className="hero-cta">
                 <Link to="/asha-login" className="btn btn-primary">Join as ASHA Worker</Link>
-                <Link to="/doctor-dashboard" className="btn btn-outline">Doctor Dashboard →</Link>
+                <Link to="/doctor-login" className="btn btn-outline">Doctor Portal →</Link>
               </div>
             </Reveal>
             <Reveal delay="delay-4">
@@ -257,7 +257,7 @@ export default function HomePage() {
               <p>Join 12,000+ ASHA workers already using Arogya to save lives every day.</p>
               <div className="cta-actions">
                 <Link to="/asha-login"       className="btn btn-white">Get Started Free</Link>
-                <Link to="/doctor-dashboard" className="btn btn-outline-white">Doctor Portal →</Link>
+                <Link to="/doctor-login" className="btn btn-outline-white">Doctor Portal →</Link>
               </div>
             </div>
           </Reveal>
