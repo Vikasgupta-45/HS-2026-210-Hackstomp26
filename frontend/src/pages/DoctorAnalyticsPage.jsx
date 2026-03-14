@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import LogoIcon from '../components/LogoIcon'
-import { API_BASE_URL } from '../api'
-
-const API = API_BASE_URL
+import { apiUrl } from '../api'
 
 function DonutChart({ triageCounts }) {
   const total = (triageCounts?.RED || 0) + (triageCounts?.YELLOW || 0) + (triageCounts?.GREEN || 0) || 1
@@ -42,8 +40,8 @@ export default function DoctorAnalyticsPage() {
   const fetchAnalytics = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API}/doctors/${doctorId}/analytics`)
-      if (!res.ok) throw new Error('Failed to fetch')
+      const res = await fetch(apiUrl(`/doctors/${encodeURIComponent(doctorId)}/analytics`))
+      if (!res.ok) throw new Error(`Failed to fetch analytics (${res.status})`)
       const json = await res.json()
       setData(json)
     } catch (err) {
