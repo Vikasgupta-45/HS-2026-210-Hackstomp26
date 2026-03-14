@@ -527,13 +527,21 @@ def _extract_symptom_keys(symptoms_text: str | None) -> List[str]:
 
 
 @app.get("/doctors/{doctor_id}/analytics")
-def get_doctor_analytics(doctor_id: str, db: Session = Depends(get_db)):
+def get_doctor_analytics(
+    doctor_id: str,
+    limit: int = 60,
+    db: Session = Depends(get_db),
+):
+    # Keep analytics responsive by computing on the latest N completed consultations.
+    effective_limit = max(1, min(limit, 200))
     consultations = (
         db.query(models.Consultation)
         .filter(
             models.Consultation.doctor_id == doctor_id,
             models.Consultation.case_status == "COMPLETED",
         )
+        .order_by(models.Consultation.recorded_at.desc())
+        .limit(effective_limit)
         .all()
     )
     triage_counts = {"RED": 0, "YELLOW": 0, "GREEN": 0}

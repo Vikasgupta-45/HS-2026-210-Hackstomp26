@@ -40,7 +40,7 @@ export default function DoctorAnalyticsPage() {
   const fetchAnalytics = async () => {
     setLoading(true)
     try {
-      const res = await fetch(apiUrl(`/doctors/${encodeURIComponent(doctorId)}/analytics`))
+      const res = await fetch(apiUrl(`/doctors/${encodeURIComponent(doctorId)}/analytics?limit=60`))
       if (!res.ok) throw new Error(`Failed to fetch analytics (${res.status})`)
       const json = await res.json()
       setData(json)
