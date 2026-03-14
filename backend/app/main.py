@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, File, UploadFile
+from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session, joinedload
@@ -40,10 +40,21 @@ if not os.path.exists(UPLOAD_DIR):
 
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
+
+def _parse_cors_origins() -> list[str]:
+    raw = os.getenv("CORS_ORIGINS", "*").strip()
+    if not raw:
+        return ["*"]
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
+ALLOWED_ORIGINS = _parse_cors_origins()
+ALLOW_CREDENTIALS = "*" not in ALLOWED_ORIGINS
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=ALLOW_CREDENTIALS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -54,13 +65,23 @@ app.add_middleware(
 def read_root():
     return {"message": "MediBridge Health Sync API is running."}
 
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
 @app.post("/upload-file")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(request: Request, file: UploadFile = File(...)):
     try:
         file_path = os.path.join(UPLOAD_DIR, file.filename)
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-        return {"url": f"http://127.0.0.1:8000/uploads/{file.filename}"}
+        public_base = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
+        if public_base:
+            base_url = public_base
+        else:
+            base_url = str(request.base_url).rstrip("/")
+        return {"url": f"{base_url}/uploads/{file.filename}"}
     except Exception as e:
         raise HTTPException(500, f"Upload failed: {str(e)}")
 
