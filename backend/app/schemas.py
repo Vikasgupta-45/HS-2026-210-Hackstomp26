@@ -156,6 +156,7 @@ class VideoCallRequestCreate(BaseModel):
     patient_id: str
     requested_by_worker_id: Optional[str] = None  # None when user self-books
     notes: Optional[str] = None
+    scheduled_for: Optional[datetime] = None
 
 class VideoCallRequestResponse(BaseModel):
     request_id: str
@@ -164,6 +165,7 @@ class VideoCallRequestResponse(BaseModel):
     status: str
     notes: Optional[str] = None
     requested_at: datetime
+    scheduled_for: Optional[datetime] = None
 
     class Config:
         from_attributes = True

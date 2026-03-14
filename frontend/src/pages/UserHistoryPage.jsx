@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext'
 import LogoIcon from '../components/LogoIcon'
+import { API_BASE_URL } from '../api'
 
-const API = 'http://127.0.0.1:8000'
+const API = API_BASE_URL
 
 function formatDate(d) {
   if (!d) return '—'
@@ -30,7 +31,7 @@ export default function UserHistoryPage() {
     }
     fetch(`${API}/user-detail/${aadhaar}`)
       .then((r) => {
-        if (!r.ok) throw new Error('Record not found')
+        if (!r.ok) throw new Error(t('user_history_record_not_found'))
         return r.json()
       })
       .then(setData)
@@ -71,14 +72,14 @@ export default function UserHistoryPage() {
   if (loading) {
     return (
       <div className="user-history-wrap">
-        <p className="user-history-loading">{t('loading') || 'Loading…'}</p>
+        <p className="user-history-loading">{t('loading')}</p>
       </div>
     )
   }
   if (error || !data) {
     return (
       <div className="user-history-wrap">
-        <p className="user-history-error">{error || 'No data'}</p>
+        <p className="user-history-error">{error || t('user_history_no_data')}</p>
         <Link to="/user-login" className="btn btn-outline">{t('user_login_title') || 'User Login'}</Link>
       </div>
     )
@@ -112,17 +113,17 @@ export default function UserHistoryPage() {
         </div>
 
         <div ref={printRef} className="user-history-printable">
-          <h1>{data.full_name || 'Patient'}</h1>
+          <h1>{data.full_name || t('user_history_patient')}</h1>
           <p className="user-history-meta">
-            Aadhaar: {data.aadhaar} · {data.age ? `${data.age} yrs` : ''} · {data.gender || ''} · {data.contact_number || ''}
+            {t('user_history_aadhaar')}: {data.aadhaar} · {data.age ? `${data.age} ${t('user_history_years_short')}` : ''} · {data.gender || ''} · {data.contact_number || ''}
           </p>
 
           <div className="user-history-summary">
             <strong>{t('user_history_summary') || 'Summary'}</strong>
-            <p>Doctor visits: <strong>{meets}</strong></p>
-            {allSymptoms && <p>Symptoms: {allSymptoms.slice(0, 200)}{allSymptoms.length > 200 ? '…' : ''}</p>}
+            <p>{t('user_history_doctor_visits')}: <strong>{meets}</strong></p>
+            {allSymptoms && <p>{t('user_history_symptoms')}: {allSymptoms.slice(0, 200)}{allSymptoms.length > 200 ? '…' : ''}</p>}
             {allMeds.length > 0 && (
-              <p>Prescriptions: {[...new Set(allMeds)].slice(0, 15).join(', ')}{allMeds.length > 15 ? '…' : ''}</p>
+              <p>{t('user_history_prescriptions')}: {[...new Set(allMeds)].slice(0, 15).join(', ')}{allMeds.length > 15 ? '…' : ''}</p>
             )}
           </div>
 
@@ -131,13 +132,13 @@ export default function UserHistoryPage() {
             <div key={h.consultation_id} className="user-history-visit">
               <h3>{formatDate(h.recorded_at)} · {h.case_status} · {h.ai_triage_level}</h3>
               {h.symptoms_text && <p className="user-history-symptoms">{h.symptoms_text}</p>}
-              {h.doctor_diagnosis && <p><strong>Diagnosis:</strong> {h.doctor_diagnosis}</p>}
+              {h.doctor_diagnosis && <p><strong>{t('user_history_diagnosis')}:</strong> {h.doctor_diagnosis}</p>}
               {(h.prescribed_medicines || []).length > 0 && (
                 <p className="user-history-meds">
-                  <strong>Prescribed:</strong>
+                  <strong>{t('user_history_prescribed')}:</strong>
                   <ul>
                     {h.prescribed_medicines.map((m) => (
-                      <li key={m.prescription_id}>{m.medicine_name} — {m.timing_frequency}, {m.duration_days} days</li>
+                      <li key={m.prescription_id}>{m.medicine_name} — {m.timing_frequency}, {m.duration_days} {t('days')}</li>
                     ))}
                   </ul>
                 </p>

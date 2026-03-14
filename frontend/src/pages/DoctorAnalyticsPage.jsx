@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import LogoIcon from '../components/LogoIcon'
+import { API_BASE_URL } from '../api'
 
-const API = 'http://127.0.0.1:8000'
+const API = API_BASE_URL
 
 function DonutChart({ triageCounts }) {
   const total = (triageCounts?.RED || 0) + (triageCounts?.YELLOW || 0) + (triageCounts?.GREEN || 0) || 1
@@ -85,7 +86,7 @@ export default function DoctorAnalyticsPage() {
         <span className="nav-group-label" style={{ fontWeight: 'normal' }}>Main Menu</span>
         <nav className="sidebar-nav">
           <Link to="/doctor-dashboard" style={{ fontWeight: 'normal' }}><span className="material-icons">dashboard</span> Dashboard</Link>
-          <a href="#" style={{ fontWeight: 'normal' }}><span className="material-icons">medical_services</span> Prescriptions</a>
+          <Link to="/doctor-dashboard/scheduled-meetings" style={{ fontWeight: 'normal' }}><span className="material-icons">event</span> Scheduled Meetings</Link>
           <Link to="/doctor-dashboard/patients" style={{ fontWeight: 'normal' }}><span className="material-icons">people</span> My Patients</Link>
           <Link to="/doctor-dashboard/analytics" className="active" style={{ fontWeight: 'normal' }}><span className="material-icons">analytics</span> Analytics</Link>
         </nav>

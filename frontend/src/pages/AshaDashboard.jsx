@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext'
 import LogoIcon from '../components/LogoIcon'
 import NotificationModal from '../components/NotificationModal'
+import { apiUrl } from '../api'
 
 export default function AshaDashboard() {
   const [tab, setTab] = useState('search') // 'search', 'add', 'consult'
@@ -31,7 +32,7 @@ export default function AshaDashboard() {
     formData.append('file', file);
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/upload-file', {
+      const res = await fetch(apiUrl('/upload-file'), {
         method: 'POST',
         body: formData
       });
@@ -50,7 +51,7 @@ export default function AshaDashboard() {
     e.preventDefault()
     if (aadharSearch.length > 5) {
       try {
-        const res = await fetch(`http://127.0.0.1:8000/patients/${aadharSearch}`);
+        const res = await fetch(apiUrl(`/patients/${aadharSearch}`));
         if (!res.ok) throw new Error("Patient not found");
         const data = await res.json();
         setSearchedPatient({
@@ -82,7 +83,7 @@ export default function AshaDashboard() {
     }
     setVcRequestLoading(true)
     try {
-      const res = await fetch('http://127.0.0.1:8000/video-call-requests', {
+      const res = await fetch(apiUrl('/video-call-requests'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -129,7 +130,7 @@ export default function AshaDashboard() {
     };
 
     try {
-      const res = await fetch('http://127.00.1:8000/sync/offline-data', {
+      const res = await fetch(apiUrl('/sync/offline-data'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

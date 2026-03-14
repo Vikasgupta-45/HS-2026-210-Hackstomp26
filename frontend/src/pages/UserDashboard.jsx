@@ -2,13 +2,24 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext'
 import LogoIcon from '../components/LogoIcon'
+import { getTelehealthPatientRoomUrl } from '../config'
+import { API_BASE_URL } from '../api'
 
-const API = 'http://127.0.0.1:8000'
+const API = API_BASE_URL
 
 function formatDate(d) {
   if (!d) return '—'
   try {
     return new Date(d).toLocaleDateString(undefined, { dateStyle: 'short' })
+  } catch {
+    return d
+  }
+}
+
+function formatDateTime(d) {
+  if (!d) return '—'
+  try {
+    return new Date(d).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
   } catch {
     return d
   }
@@ -23,6 +34,8 @@ export default function UserDashboard() {
 
   const [reminders, setReminders] = useState([])
   const [remindersLoading, setRemindersLoading] = useState(true)
+  const [videoRequests, setVideoRequests] = useState([])
+  const [scheduledFor, setScheduledFor] = useState('')
   const [bookNote, setBookNote] = useState('')
   const [bookLoading, setBookLoading] = useState(false)
   const [bookSuccess, setBookSuccess] = useState('')
@@ -38,7 +51,19 @@ export default function UserDashboard() {
       .then(setReminders)
       .catch(() => setReminders([]))
       .finally(() => setRemindersLoading(false))
+
+    fetchUserVideoRequests()
+    const poll = setInterval(fetchUserVideoRequests, 10000)
+    return () => clearInterval(poll)
   }, [aadhaar, token, navigate])
+
+  const fetchUserVideoRequests = () => {
+    if (!aadhaar) return
+    fetch(`${API}/video-call-requests/patient/${aadhaar}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setVideoRequests(Array.isArray(data) ? data : []))
+      .catch(() => setVideoRequests([]))
+  }
 
   const handleLogout = () => {
     localStorage.removeItem('user_token')
@@ -51,19 +76,33 @@ export default function UserDashboard() {
     e.preventDefault()
     setBookError('')
     setBookSuccess('')
+    if (!scheduledFor) {
+      setBookError(t('user_select_preferred_time'))
+      return
+    }
     setBookLoading(true)
     try {
+      const scheduledIso = new Date(scheduledFor).toISOString()
       const res = await fetch(`${API}/video-call-requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ patient_id: aadhaar, requested_by_worker_id: null, notes: bookNote || null }),
+        body: JSON.stringify({
+          patient_id: aadhaar,
+          requested_by_worker_id: null,
+          notes: bookNote || null,
+          scheduled_for: scheduledIso,
+        }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail || 'Could not create request.')
+        throw new Error(err.detail || t('user_could_not_create_request'))
       }
-      setBookSuccess(t('user_book_success') || 'Video call request sent. A doctor will respond soon.')
+      setBookSuccess(
+        `${t('user_book_success')} ${t('user_book_scheduled_for')} ${formatDateTime(scheduledIso)}.`
+      )
+      setScheduledFor('')
       setBookNote('')
+      fetchUserVideoRequests()
     } catch (err) {
       setBookError(err.message)
     } finally {
@@ -72,6 +111,14 @@ export default function UserDashboard() {
   }
 
   if (!token || !aadhaar) return null
+
+  const acceptedRequest = videoRequests.find((r) => (r.status || '').toUpperCase() === 'ACCEPTED')
+  const latestRequest = videoRequests[0]
+  const latestStatus = (latestRequest?.status || '').toUpperCase()
+  const connectDisabled = !acceptedRequest
+  const connectHref = acceptedRequest
+    ? (acceptedRequest.invite_link || getTelehealthPatientRoomUrl(acceptedRequest.request_id, userName || 'Patient'))
+    : '#'
 
   return (
     <div className="user-dashboard-wrap">
@@ -101,6 +148,16 @@ export default function UserDashboard() {
             <h2>{t('user_book_title') || 'Book doctor appointment / video call'}</h2>
             <p className="user-dashboard-card-sub">{t('user_book_sub') || 'Request a video call with a doctor. You will be notified when they accept.'}</p>
             <form onSubmit={handleBookAppointment}>
+              <input
+                type="datetime-local"
+                value={scheduledFor}
+                onChange={(e) => setScheduledFor(e.target.value)}
+                min={new Date(Date.now() + 5 * 60 * 1000).toISOString().slice(0, 16)}
+                className="user-dashboard-textarea"
+                style={{ minHeight: 44 }}
+                aria-label={t('user_schedule_datetime_label')}
+                required
+              />
               <textarea
                 placeholder={t('user_book_notes_placeholder') || 'Optional: add a note (e.g. symptoms or reason)'}
                 value={bookNote}
@@ -113,6 +170,24 @@ export default function UserDashboard() {
               <button type="submit" className="user-dashboard-btn user-dashboard-btn-primary" disabled={bookLoading}>
                 {bookLoading ? (t('loading') || 'Loading…') : (t('user_book_btn') || 'Request video call')}
               </button>
+              <button
+                type="button"
+                className="user-dashboard-btn user-dashboard-btn-secondary"
+                style={{ marginTop: 10, opacity: connectDisabled ? 0.6 : 1, cursor: connectDisabled ? 'not-allowed' : 'pointer' }}
+                disabled={connectDisabled}
+                onClick={() => {
+                  if (connectDisabled) return
+                  window.open(connectHref, '_blank', 'noopener,noreferrer')
+                }}
+              >
+                {connectDisabled ? t('user_connect_doctor_disabled') : t('user_connect_doctor')}
+              </button>
+              {latestRequest && (
+                <p className="user-dashboard-card-sub" style={{ marginTop: 8 }}>
+                  {t('user_latest_vc_status')}: {t(`status_${latestStatus.toLowerCase()}`) || latestStatus}
+                  {latestRequest.scheduled_for ? ` | ${t('user_scheduled_label')}: ${formatDateTime(latestRequest.scheduled_for)}` : ''}
+                </p>
+              )}
             </form>
           </div>
 
@@ -134,7 +209,7 @@ export default function UserDashboard() {
             <h2>{t('user_reminders_title') || 'Medicine reminders'}</h2>
             <p className="user-dashboard-card-sub">{t('user_reminders_sub') || 'Take your prescribed medicines as directed.'}</p>
             {remindersLoading ? (
-              <p className="user-dashboard-reminders-loading">{t('loading') || 'Loading…'}</p>
+              <p className="user-dashboard-reminders-loading">{t('loading')}</p>
             ) : reminders.length === 0 ? (
               <p className="user-dashboard-reminders-empty">{t('user_no_reminders') || 'No active prescriptions right now.'}</p>
             ) : (

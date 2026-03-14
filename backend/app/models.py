@@ -131,6 +131,7 @@ class VideoCallRequest(Base):
     status = Column(String, default="PENDING")  # PENDING, ACCEPTED, REJECTED
     notes = Column(String, nullable=True)
     requested_at = Column(DateTime, default=datetime.utcnow)
+    scheduled_for = Column(DateTime, nullable=True)
     responded_at = Column(DateTime, nullable=True)
     doctor_id = Column(String, ForeignKey("doctors.doctor_id"), nullable=True)
 

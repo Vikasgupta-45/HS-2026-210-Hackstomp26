@@ -4,6 +4,7 @@ import { useLanguage } from '../context/LanguageContext'
 import LogoIcon from '../components/LogoIcon'
 import NotificationModal from '../components/NotificationModal'
 import { getTelehealthDoctorRoomUrl } from '../config'
+import { apiUrl } from '../api'
 
 export default function DoctorDashboard() {
   const { t } = useLanguage()
@@ -26,7 +27,7 @@ export default function DoctorDashboard() {
 
   const fetchVideoCallRequests = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/video-call-requests/pending')
+      const res = await fetch(apiUrl('/video-call-requests/pending'))
       if (res.ok) {
         const data = await res.json()
         setVideoCallRequests(Array.isArray(data) ? data : [])
@@ -38,13 +39,13 @@ export default function DoctorDashboard() {
 
   const fetchConsultations = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/consultations/open');
+      const res = await fetch(apiUrl('/consultations/open'));
       if (!res.ok) throw new Error(t('fetch_failed'));
       let data = await res.json();
       
       const enriched = await Promise.all(data.map(async c => {
         try {
-          const p = await fetch(`http://127.0.0.1:8000/patients/${c.patient_id}`);
+          const p = await fetch(apiUrl(`/patients/${c.patient_id}`));
           const pData = await p.json();
           return { ...c, patientName: pData.full_name, patientAge: pData.age };
         } catch {
@@ -69,7 +70,7 @@ export default function DoctorDashboard() {
         notes: m.notes
       }));
 
-      const res = await fetch(`http://127.0.0.1:8000/consultations/${selectedCase.consultation_id}/prescribe?doctor_id=${doctorId}`, {
+      const res = await fetch(apiUrl(`/consultations/${selectedCase.consultation_id}/prescribe?doctor_id=${doctorId}`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -98,9 +99,11 @@ export default function DoctorDashboard() {
     { filterId: 'GREEN',   label: t('routine_checks'), num: consultations.filter(c => c.ai_triage_level==='GREEN').length,  icon:'person_add',      sub: t('routine_checks_sub') },
   ];
 
+  const unscheduledRequests = videoCallRequests.filter((r) => !r.scheduled_for)
+
   const handleRespondVC = async (requestId, status) => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/video-call-requests/${requestId}`, {
+      const res = await fetch(apiUrl(`/video-call-requests/${requestId}`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -158,7 +161,7 @@ export default function DoctorDashboard() {
           <Link to="/doctor-dashboard" className={active === 'Dashboard' ? 'active' : ''} onClick={() => setActive('Dashboard')} style={{ fontWeight: 'normal' }}>
             <span className="material-icons">dashboard</span> {t('nav_dashboard')}
           </Link>
-          <a href="#" style={{ fontWeight: 'normal' }}><span className="material-icons">medical_services</span> {t('nav_prescriptions')}</a>
+          <Link to="/doctor-dashboard/scheduled-meetings" style={{ fontWeight: 'normal' }}><span className="material-icons">event</span> Scheduled Meetings</Link>
           <Link to="/doctor-dashboard/patients" style={{ fontWeight: 'normal' }}><span className="material-icons">people</span> My Patients</Link>
           <Link to="/doctor-dashboard/analytics" style={{ fontWeight: 'normal' }}><span className="material-icons">analytics</span> Analytics</Link>
         </nav>
@@ -181,7 +184,7 @@ export default function DoctorDashboard() {
           </div>
         </div>
 
-        {videoCallRequests.length > 0 && (
+        {unscheduledRequests.length > 0 && (
           <div className="dash-card vc-requests-card" style={{ marginBottom: 32 }}>
             <div className="dash-card-header">
               <h3 style={{ fontWeight: 'normal', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -193,7 +196,7 @@ export default function DoctorDashboard() {
               </a>
             </div>
             <div className="vc-requests-list" style={{ marginTop: 12 }}>
-              {videoCallRequests.map((r) => (
+              {unscheduledRequests.map((r) => (
                 <div key={r.request_id} className="asha-patient-card request-item-card" style={{ marginBottom: 12 }}>
                   <div className="asha-patient-card-inner">
                     <div className="asha-patient-info">

@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext'
 import LogoIcon from '../components/LogoIcon'
 import { getTelehealthPatientRoomUrl } from '../config'
+import { API_BASE_URL } from '../api'
 
-const API = 'http://127.0.0.1:8000'
+const API = API_BASE_URL
 
 function formatDate(iso) {
   if (!iso) return '—'

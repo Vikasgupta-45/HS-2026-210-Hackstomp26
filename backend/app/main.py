@@ -14,6 +14,23 @@ from .database import engine, get_db
 
 models.Base.metadata.create_all(bind=engine)
 
+
+def _ensure_video_call_request_schema():
+    """
+    Lightweight schema patching for SQLite deployments without migrations.
+    Adds scheduled_for column if missing.
+    """
+    with engine.begin() as conn:
+        if conn.dialect.name != "sqlite":
+            return
+        cols = conn.exec_driver_sql("PRAGMA table_info(video_call_requests)").fetchall()
+        existing_names = {row[1] for row in cols}
+        if "scheduled_for" not in existing_names:
+            conn.exec_driver_sql("ALTER TABLE video_call_requests ADD COLUMN scheduled_for DATETIME")
+
+
+_ensure_video_call_request_schema()
+
 app = FastAPI(title="MediBridge — Offline-First Health Sync API")
 
 # Ensure uploads directory exists
@@ -571,6 +588,7 @@ def create_video_call_request(data: schemas.VideoCallRequestCreate, db: Session 
         patient_id=data.patient_id,
         requested_by_worker_id=data.requested_by_worker_id,
         notes=data.notes,
+        scheduled_for=data.scheduled_for,
         status="PENDING",
     )
     db.add(req)
@@ -598,6 +616,7 @@ def list_pending_video_call_requests(db: Session = Depends(get_db)):
             status=req.status,
             notes=req.notes,
             requested_at=req.requested_at,
+            scheduled_for=req.scheduled_for,
             patient_name=patient.full_name if patient else None,
             requested_by_name=worker.full_name if worker else None,
         ))
@@ -606,6 +625,16 @@ def list_pending_video_call_requests(db: Session = Depends(get_db)):
 
 # Base URL for Sarvam TeleHealth (speech-recognition) app — used to build invite link for ASHA
 TELEHEALTH_BASE_URL = os.getenv("TELEHEALTH_BASE_URL", "http://localhost:3000").rstrip("/")
+
+
+def _build_patient_invite_link(request_id: str, worker_name: str) -> str:
+    safe_request_id = quote(str(request_id or ""), safe="")
+    safe_worker_name = quote((worker_name or "ASHA Worker"), safe="")
+    # Include both userName and username for compatibility across telehealth builds.
+    return (
+        f"{TELEHEALTH_BASE_URL}/room/{safe_request_id}"
+        f"?role=patient&userName={safe_worker_name}&username={safe_worker_name}"
+    )
 
 
 @app.get("/video-call-requests/worker/{worker_id}", response_model=List[schemas.VideoCallRequestEnriched])
@@ -623,7 +652,7 @@ def list_worker_video_call_requests(worker_id: str, db: Session = Depends(get_db
         patient = db.query(models.Patient).filter(models.Patient.patient_id == req.patient_id).first()
         invite_link = None
         if (req.status or "").upper() == "ACCEPTED":
-            invite_link = f"{TELEHEALTH_BASE_URL}/room/{quote(req.request_id, safe='')}?role=patient&userName={quote(worker_name)}"
+            invite_link = _build_patient_invite_link(req.request_id, worker_name)
         result.append(schemas.VideoCallRequestEnriched(
             request_id=req.request_id,
             patient_id=req.patient_id,
@@ -631,8 +660,40 @@ def list_worker_video_call_requests(worker_id: str, db: Session = Depends(get_db
             status=req.status,
             notes=req.notes,
             requested_at=req.requested_at,
+            scheduled_for=req.scheduled_for,
             patient_name=patient.full_name if patient else None,
             requested_by_name=worker_name,
+            invite_link=invite_link,
+        ))
+    return result
+
+
+@app.get("/video-call-requests/patient/{patient_id}", response_model=List[schemas.VideoCallRequestEnriched])
+def list_patient_video_call_requests(patient_id: str, db: Session = Depends(get_db)):
+    requests = (
+        db.query(models.VideoCallRequest)
+        .filter(models.VideoCallRequest.patient_id == patient_id)
+        .order_by(models.VideoCallRequest.requested_at.desc())
+        .all()
+    )
+    patient = db.query(models.Patient).filter(models.Patient.patient_id == patient_id).first()
+    patient_name = (patient.full_name if patient else None) or "Patient"
+    result = []
+    for req in requests:
+        worker = db.query(models.Worker).filter(models.Worker.worker_id == req.requested_by_worker_id).first()
+        invite_link = None
+        if (req.status or "").upper() == "ACCEPTED":
+            invite_link = _build_patient_invite_link(req.request_id, patient_name)
+        result.append(schemas.VideoCallRequestEnriched(
+            request_id=req.request_id,
+            patient_id=req.patient_id,
+            requested_by_worker_id=req.requested_by_worker_id,
+            status=req.status,
+            notes=req.notes,
+            requested_at=req.requested_at,
+            scheduled_for=req.scheduled_for,
+            patient_name=patient_name,
+            requested_by_name=worker.full_name if worker else "Self",
             invite_link=invite_link,
         ))
     return result
@@ -658,9 +719,13 @@ def update_video_call_request(
     db.commit()
     out = {"message": f"Request {data.status.lower()}."}
     if (data.status or "").upper() == "ACCEPTED":
-        worker = db.query(models.Worker).filter(models.Worker.worker_id == req.requested_by_worker_id).first()
-        worker_name = (worker.full_name if worker else None) or "ASHA Worker"
-        out["invite_link"] = f"{TELEHEALTH_BASE_URL}/room/{quote(req.request_id, safe='')}?role=patient&userName={quote(worker_name)}"
+        if req.requested_by_worker_id:
+            worker = db.query(models.Worker).filter(models.Worker.worker_id == req.requested_by_worker_id).first()
+            receiver_name = (worker.full_name if worker else None) or "ASHA Worker"
+        else:
+            patient = db.query(models.Patient).filter(models.Patient.patient_id == req.patient_id).first()
+            receiver_name = (patient.full_name if patient else None) or "Patient"
+        out["invite_link"] = _build_patient_invite_link(req.request_id, receiver_name)
     return out
 
 

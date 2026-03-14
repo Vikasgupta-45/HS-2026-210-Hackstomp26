@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext'
 import LogoIcon from '../components/LogoIcon'
+import { apiUrl } from '../api'
 
 export default function DoctorAuthPage() {
   const { t } = useLanguage()
@@ -35,7 +36,7 @@ export default function DoctorAuthPage() {
         }
       }
 
-      const res = await fetch(`http://127.0.0.1:8000${endpoint}`, {
+      const res = await fetch(apiUrl(endpoint), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

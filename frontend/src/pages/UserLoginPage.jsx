@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext'
 import LogoIcon from '../components/LogoIcon'
+import { API_BASE_URL } from '../api'
 
-const API = 'http://127.0.0.1:8000'
+const API = API_BASE_URL
 
 export default function UserLoginPage() {
   const { t } = useLanguage()
@@ -40,8 +41,8 @@ export default function UserLoginPage() {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        const msg = Array.isArray(err.detail) ? (err.detail[0]?.msg || err.detail[0]) : (err.detail || 'Invalid credentials.')
-        throw new Error(typeof msg === 'string' ? msg : 'Invalid credentials.')
+        const msg = Array.isArray(err.detail) ? (err.detail[0]?.msg || err.detail[0]) : (err.detail || t('user_invalid_credentials'))
+        throw new Error(typeof msg === 'string' ? msg : t('user_invalid_credentials'))
       }
       const data = await res.json()
       localStorage.setItem('user_token', data.token)
@@ -67,9 +68,9 @@ export default function UserLoginPage() {
         </div>
         <div className="auth-visual-cards">
           {[
-            { icon: 'video_call', title: 'Book doctor / video call', sub: 'Request an appointment' },
-            { icon: 'history_edu', title: 'Past records', sub: 'View your consultation history' },
-            { icon: 'medication', title: 'Medicine reminders', sub: 'Never miss a dose' },
+            { icon: 'video_call', title: t('user_login_feature_book_title'), sub: t('user_login_feature_book_sub') },
+            { icon: 'history_edu', title: t('user_login_feature_records_title'), sub: t('user_login_feature_records_sub') },
+            { icon: 'medication', title: t('user_login_feature_reminders_title'), sub: t('user_login_feature_reminders_sub') },
           ].map((c, i) => (
             <div key={i} className="auth-vcard">
               <span className="material-icons">{c.icon}</span>
@@ -139,10 +140,17 @@ export default function UserLoginPage() {
           )}
           <div className="form-group">
             <label>{t('user_password_label') || 'Password'}</label>
-            <input name="password" type="password" placeholder={tab === 'login' ? 'Your password' : 'Create a password'} value={form.password} onChange={handleChange} required />
+            <input
+              name="password"
+              type="password"
+              placeholder={tab === 'login' ? t('user_password_placeholder_login') : t('user_password_placeholder_register')}
+              value={form.password}
+              onChange={handleChange}
+              required
+            />
           </div>
           <button type="submit" className="auth-submit" disabled={loading}>
-            {loading ? (t('loading') || 'Loading…') : (tab === 'login' ? (t('signin_btn') || 'Sign in') : (t('user_register_btn') || 'Register'))} →
+            {loading ? t('loading') : (tab === 'login' ? (t('signin_btn') || 'Sign in') : (t('user_register_btn') || 'Register'))} →
           </button>
         </form>
       </div>

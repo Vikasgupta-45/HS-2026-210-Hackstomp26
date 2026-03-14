@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext'
 import LogoIcon from './LogoIcon'
 import LanguageSelector from './LanguageSelector'
+import OfflineStatusBadge from './OfflineStatusBadge'
 
 export default function Header() {
   const { t } = useLanguage()
@@ -29,12 +30,15 @@ export default function Header() {
           <a href="/#features" className="nav-link">{t('nav_features')}</a>
         </div>
 
-        <Link to="/" className="logo-wrap">
-          <div className="logo-icon">
-            <LogoIcon />
-          </div>
-          <span className="logo-text">AROGYA</span>
-        </Link>
+        <div className="logo-stack">
+          <Link to="/" className="logo-wrap">
+            <div className="logo-icon">
+              <LogoIcon />
+            </div>
+            <span className="logo-text">AROGYA</span>
+          </Link>
+          <OfflineStatusBadge className="offline-badge--under-logo" autoHideMs={12000} />
+        </div>
 
         <div className="nav-right">
           {pathname === '/' && <LanguageSelector />}
