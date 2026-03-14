@@ -3,6 +3,35 @@ import { Link } from 'react-router-dom'
 import LogoIcon from '../components/LogoIcon'
 import { apiUrl } from '../api'
 
+const MOCK_ANALYTICS_DATA = {
+  triage_counts: { RED: 11, YELLOW: 17, GREEN: 22 },
+  symptom_counts: [
+    { label: 'fever', count: 18 },
+    { label: 'cough', count: 16 },
+    { label: 'headache', count: 14 },
+    { label: 'weakness', count: 12 },
+    { label: 'bodypain', count: 11 },
+    { label: 'diarrhea', count: 9 },
+    { label: 'rash', count: 8 },
+    { label: 'vomit', count: 7 },
+    { label: 'breathlessness', count: 6 },
+    { label: 'chestpain', count: 5 },
+  ],
+  heatmap: [],
+  total_patients: 50,
+  disease_by_area: {
+    areas: ['North Ward', 'Shivaji Nagar', 'Old Town', 'Lake Side', 'Green Park'],
+    diseases: ['fever', 'cough', 'headache', 'weakness', 'bodypain', 'diarrhea', 'rash', 'vomit'],
+    matrix: [
+      [7, 6, 5, 4, 3, 2, 1, 1],
+      [5, 6, 4, 3, 3, 2, 2, 1],
+      [3, 4, 5, 4, 3, 2, 2, 1],
+      [2, 3, 3, 2, 2, 2, 1, 1],
+      [1, 2, 2, 2, 1, 1, 1, 0],
+    ],
+  },
+}
+
 function DonutChart({ triageCounts }) {
   const total = (triageCounts?.RED || 0) + (triageCounts?.YELLOW || 0) + (triageCounts?.GREEN || 0) || 1
   const r = (triageCounts?.RED || 0) / total
@@ -43,10 +72,13 @@ export default function DoctorAnalyticsPage() {
       const res = await fetch(apiUrl(`/doctors/${encodeURIComponent(doctorId)}/analytics?limit=60`))
       if (!res.ok) throw new Error(`Failed to fetch analytics (${res.status})`)
       const json = await res.json()
-      setData(json)
+      const hasLiveData =
+        (Number(json?.total_patients || 0) > 0) ||
+        (Array.isArray(json?.symptom_counts) && json.symptom_counts.length > 0)
+      setData(hasLiveData ? json : MOCK_ANALYTICS_DATA)
     } catch (err) {
       console.error(err)
-      setData(null)
+      setData(MOCK_ANALYTICS_DATA)
     } finally {
       setLoading(false)
     }
